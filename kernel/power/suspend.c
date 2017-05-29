@@ -24,7 +24,6 @@
 #include <linux/export.h>
 #include <linux/suspend.h>
 #include <linux/syscore_ops.h>
-#include <linux/rtc.h>
 #include <trace/events/power.h>
 
 #include "power.h"
@@ -320,18 +319,6 @@ static int enter_state(suspend_state_t state)
 	return error;
 }
 
-static void pm_suspend_marker(char *annotation)
-{
-	struct timespec ts;
-	struct rtc_time tm;
-
-	getnstimeofday(&ts);
-	rtc_time_to_tm(ts.tv_sec, &tm);
-	pr_info("PM: suspend %s %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
-		annotation, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
-}
-
 /**
  * pm_suspend - Externally visible function for suspending the system.
  * @state: System sleep state to enter.
@@ -339,9 +326,6 @@ static void pm_suspend_marker(char *annotation)
  * Check if the value of @state represents one of the supported states,
  * execute enter_state() and update system suspend statistics.
  */
-#ifdef CONFIG_MACH_MSM8X10_L70P /* Boost Cpu when wake up */
-bool suspend_marker_entry = false;
-#endif
 int pm_suspend(suspend_state_t state)
 {
 	int error;
@@ -349,10 +333,6 @@ int pm_suspend(suspend_state_t state)
 	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
 		return -EINVAL;
 
-	pm_suspend_marker("entry");
-#ifdef CONFIG_MACH_MSM8X10_L70P /* Boost Cpu when wake up */
-	suspend_marker_entry = true;
-#endif
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -360,10 +340,6 @@ int pm_suspend(suspend_state_t state)
 	} else {
 		suspend_stats.success++;
 	}
-	pm_suspend_marker("exit");
-#ifdef CONFIG_MACH_MSM8X10_L70P /* Boost Cpu when wake up */
-	suspend_marker_entry = false;
-#endif
 	return error;
 }
 EXPORT_SYMBOL(pm_suspend);
